@@ -20,6 +20,11 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+general_model_for_this_task = "ollama/qwen3:latest"
+if "DEFAULT_OLLAMA_MODEL" in os.environ:
+    general_model_for_this_task = os.environ["DEFAULT_OLLAMA_MODEL"]
+
+
 node_selection_spec = FunctionSpec(
     name="select_best_implementation",
     description="Select the best implementation based on comprehensive analysis",
@@ -471,7 +476,7 @@ class Journal:
                 system_message=prompt,
                 user_message=None,
                 func_spec=node_selection_spec,
-                model="gpt-4o",
+                model=general_model_for_this_task,
                 temperature=0.3,
             )
 
@@ -535,7 +540,7 @@ class Journal:
                 "2. Common failure patterns and pitfalls to avoid\n"
                 "3. Specific recommendations for future experiments based on both successes and failures"
             ),
-            model="gpt-4o",
+            model=general_model_for_this_task,
             temperature=0.3,
         )
 
@@ -599,7 +604,7 @@ class Journal:
         stage_summary = query(
             system_message=summary_prompt,
             user_message="Generate a comprehensive summary of the experimental findings in this stage",
-            model="gpt-4",
+            model=general_model_for_this_task,
             temperature=0.3,
         )
 

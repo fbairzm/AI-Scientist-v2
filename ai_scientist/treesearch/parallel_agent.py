@@ -23,8 +23,6 @@ from pathlib import Path
 import base64
 import sys
 
-logger = logging.getLogger("ai-scientist")
-
 ExecCallbackType = Callable[[str, bool], ExecutionResult]
 
 
@@ -34,7 +32,7 @@ def _safe_pickle_test(obj, name="object"):
         pickle.dumps(obj)
         return True
     except Exception as e:
-        logger.error(f"Cannot pickle {name}: {str(e)}")
+        logging.error(f"Cannot pickle {name}: {str(e)}")
         return False
 
 
@@ -73,8 +71,8 @@ def _parse_keyword_prefix_response(
         return name, description
 
     except Exception as e:
-        logger.error(f"Error parsing response: {str(e)}")
-        logger.debug(f"Raw response: {response}")
+        logging.error(f"Error parsing response: {str(e)}")
+        logging.debug(f"Raw response: {response}")
         return None, None
 
 
@@ -683,7 +681,8 @@ class MinimalAgent:
     def parse_exec_result(
         self, node: Node, exec_result: ExecutionResult, workspace: str
     ):
-        logger.info(f"Agent is parsing execution results for node {node.id}")
+        logging.info(f"Agent is parsing execution results for node {node.id}")
+        
 
         node.absorb_exec_result(exec_result)
 
@@ -709,13 +708,15 @@ class MinimalAgent:
             ),
         )
 
+        logging.debug(f"Prompt : {prompt}")
+        logging.debug(f"Response: {response}") 
+
         node.analysis = response["summary"]
         node.is_buggy = response["is_bug"] or node.exc_type is not None
-        print(
-            "[red]Checking if response contains metric name and description[/red]",
-            flush=True,
+        logging.info(
+            "[red]Checking if response contains metric name and description[/red]" 
         )
-        print(response)
+        logging.info(response)
 
     def _generate_plotting_code(
         self, node: Node, working_dir: str, plot_code_from_prev_stage: str = None
@@ -878,15 +879,15 @@ class MinimalAgent:
                 ]
                 # Filter out empty strings and ensure all elements are strings
                 datasets = [ds for ds in datasets if isinstance(ds, str) and ds]
-                logger.info(f"Successfully parsed datasets: {datasets}")
+                logging.info(f"Successfully parsed datasets: {datasets}")
                 return datasets
 
             retry_count += 1
-            logger.warning(
+            logging.warning(
                 f"Failed to parse successfully tested datasets response (attempt {retry_count}/{retry_limit})"
             )
 
-        logger.error(
+        logging.error(
             f"Failed to parse successfully tested datasets response after {retry_limit} retries. Falling back to an empty list."
         )
         return [""]
@@ -951,14 +952,14 @@ class MinimalAgent:
                     ):
                         valid_plots.append(plot_path)
                     else:
-                        logger.warning(f"Invalid plot path received: {plot_path}")
+                        logging.warning(f"Invalid plot path received: {plot_path}")
 
                 # Use the validated list
                 if valid_plots:
                     print(f"[cyan]Selected valid plots:[/cyan] {valid_plots}")
                     selected_plots = valid_plots
                 else:
-                    logger.warning(
+                    logging.warning(
                         "No valid plot paths found in response, falling back to first 10 plots"
                     )
                     # fallback to first 10 plots
@@ -970,10 +971,10 @@ class MinimalAgent:
                         ):
                             selected_plots.append(plot_path)
                         else:
-                            logger.warning(f"Invalid plot path received: {plot_path}")
+                            logging.warning(f"Invalid plot path received: {plot_path}")
 
             except Exception as e:
-                logger.error(
+                logging.error(
                     f"Error in plot selection: {str(e)}; falling back to first 10 plots"
                 )
                 # Fallback to using first 10 plots
@@ -1118,9 +1119,8 @@ class GPUManager:
 
 
 def get_gpu_count() -> int:
-    """Get number of available NVIDIA GPUs without using torch"""
+     # Try NVIDIA first
     try:
-        # First try using nvidia-smi
         nvidia_smi = subprocess.run(
             ["nvidia-smi", "--query-gpu=gpu_name", "--format=csv,noheader"],
             capture_output=True,
@@ -1128,15 +1128,34 @@ def get_gpu_count() -> int:
             check=True,
         )
         gpus = nvidia_smi.stdout.strip().split("\n")
-        return len(gpus)
-    except (subprocess.SubprocessError, FileNotFoundError):
-        # If nvidia-smi fails, try environment variable
-        cuda_visible_devices = os.environ.get("CUDA_VISIBLE_DEVICES")
-        if cuda_visible_devices:
-            # Filter out empty strings and -1 values
-            devices = [d for d in cuda_visible_devices.split(",") if d and d != "-1"]
-            return len(devices)
-        return 0
+        if gpus and gpus[0]:
+            return len(gpus)
+    except Exception:
+        pass
+    # Try AMD ROCm
+    try:
+        rocm_smi = subprocess.run(
+            ["rocm-smi", "--showproductname"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        gpu_indices = set()
+        for line in rocm_smi.stdout.strip().split("\n"):
+            line = line.strip()
+            if line.startswith("GPU["):
+                idx = line.split("]")[0][4:]
+                gpu_indices.add(idx)
+        if gpu_indices:
+            return len(gpu_indices) 
+    except Exception:
+        pass
+    # Fallback to CUDA_VISIBLE_DEVICES
+    cuda_visible_devices = os.environ.get("CUDA_VISIBLE_DEVICES")
+    if cuda_visible_devices:
+        devices = [d for d in cuda_visible_devices.split(",") if d and d != "-1"]
+        return len(devices)
+    return 0
 
 
 class ParallelAgent:
@@ -1177,7 +1196,7 @@ class ParallelAgent:
 
         if self.num_gpus > 0:
             self.num_workers = min(self.num_workers, self.num_gpus)
-            logger.info(f"Limiting workers to {self.num_workers} to match GPU count")
+            logging.info(f"Limiting workers to {self.num_workers} to match GPU count")
 
         self.timeout = self.cfg.exec.timeout
         self.executor = ProcessPoolExecutor(max_workers=self.num_workers)
@@ -1275,9 +1294,9 @@ class ParallelAgent:
                 try:
                     process_id = f"seed_{seed}_worker"
                     gpu_id = self.gpu_manager.acquire_gpu(process_id)
-                    logger.info(f"Assigned GPU {gpu_id} to seed {seed}")
+                    logging.info(f"Assigned GPU {gpu_id} to seed {seed}")
                 except RuntimeError as e:
-                    logger.warning(
+                    logging.warning(
                         f"Could not acquire GPU for seed {seed}: {e}. Running on CPU"
                     )
 
@@ -1325,7 +1344,7 @@ class ParallelAgent:
                 seed_nodes.append(self.journal.get_node_by_id(result_node.id))
                 print("Added result node to journal")
             except Exception as e:
-                logger.error(f"Error in multi-seed evaluation: {str(e)}")
+                logging.error(f"Error in multi-seed evaluation: {str(e)}")
 
         return seed_nodes
 
@@ -1442,10 +1461,10 @@ class ParallelAgent:
 
         if gpu_id is not None:
             os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
-            logger.info(f"Process {process_id} assigned to GPU {gpu_id}")
+            logging.info(f"Process {process_id} assigned to GPU {gpu_id}")
         else:
             os.environ["CUDA_VISIBLE_DEVICES"] = ""
-            logger.info(f"Process {process_id} running on CPU")
+            logging.info(f"Process {process_id} running on CPU")
 
         # Create minimal agent for worker process with the global metric definition
         worker_agent = MinimalAgent(
@@ -1499,7 +1518,7 @@ class ParallelAgent:
                             parent_node, new_hyperparam_idea
                         )
                         child_node.parent = parent_node
-                        logger.info(
+                        logging.info(
                             f"Processing hyperparam tuning: {child_node.hyperparam_name}"
                         )
                         print(
@@ -1512,7 +1531,7 @@ class ParallelAgent:
                             parent_node, new_ablation_idea
                         )
                         child_node.parent = parent_node
-                        logger.info(f"Processing ablation: {child_node.ablation_name}")
+                        logging.info(f"Processing ablation: {child_node.ablation_name}")
                         print(
                             f"[cyan]Running ablation study: {child_node.ablation_name}[/cyan]"
                         )
@@ -1534,7 +1553,7 @@ class ParallelAgent:
             # Add check for saved data files
             data_files = [f for f in os.listdir(working_dir) if f.endswith(".npy")]
             if not data_files:
-                logger.warning(
+                logging.warning(
                     "No .npy files found in working directory. Data may not have been saved properly."
                 )
             else:
@@ -1635,24 +1654,24 @@ class ParallelAgent:
                             child_node.metric = MetricValue(
                                 value={"metric_names": metrics_response["metric_names"]}
                             )
-                            logger.info(
+                            logging.info(
                                 f"Successfully extracted metrics for node {child_node.id}"
                             )
                         else:
                             child_node.metric = WorstMetricValue()
                             child_node.is_buggy = True
-                            logger.error(
+                            logging.error(
                                 f"No valid metrics received for node {child_node.id}"
                             )
                     else:
-                        logger.error(
+                        logging.error(
                             f"Error executing metrics parsing code: {metrics_exec_result.exc_info}"
                         )
                         child_node.metric = WorstMetricValue()
                         child_node.is_buggy = True
 
                 except Exception as e:
-                    logger.error(
+                    logging.error(
                         f"Error parsing metrics for node {child_node.id}: {str(e)}"
                     )
                     child_node.metric = WorstMetricValue()
@@ -1730,17 +1749,17 @@ class ParallelAgent:
                         plot_code_path = exp_results_dir / "plotting_code.py"
                         with open(plot_code_path, "w") as f:
                             f.write(plotting_code)
-                        logger.info(f"Saved plotting code to {plot_code_path}")
+                        logging.info(f"Saved plotting code to {plot_code_path}")
                         # Save experiment code to experiment_results directory
                         exp_code_path = exp_results_dir / "experiment_code.py"
                         with open(exp_code_path, "w") as f:
                             f.write(child_node.code)
-                        logger.info(f"Saved experiment code to {exp_code_path}")
+                        logging.info(f"Saved experiment code to {exp_code_path}")
                         # Move experiment data files to experiment_results directory
                         for exp_data_file in plots_dir.glob("*.npy"):
                             exp_data_path = exp_results_dir / exp_data_file.name
                             exp_data_file.resolve().rename(exp_data_path)
-                            logger.info(f"Saved experiment data to {exp_data_path}")
+                            logging.info(f"Saved experiment data to {exp_data_path}")
 
                         for plot_file in plots_dir.glob("*.png"):
                             # Get the base directory (parent of workspaces/logs)
@@ -1759,24 +1778,24 @@ class ParallelAgent:
                                 str(final_path.absolute())
                             )  # For programmatic access
 
-                            logger.info(
+                            logging.info(
                                 f"[green]Generated plot: {plot_file.stem}[/green]"
                             )
-                            logger.debug(f"Plot absolute path: {final_path.absolute()}")
-                            logger.debug(f"Plot web path: {web_path}")
+                            logging.debug(f"Plot absolute path: {final_path.absolute()}")
+                            logging.debug(f"Plot web path: {web_path}")
                 except Exception as e:
-                    logger.error(
+                    logging.error(
                         f"Error generating plots for node {child_node.id}: {str(e)}"
                     )
 
                 if child_node.plots:
                     try:
                         worker_agent._analyze_plots_with_vlm(child_node)
-                        logger.info(
+                        logging.info(
                             f"Generated VLM analysis for plots in node {child_node.id}"
                         )
                     except Exception as e:
-                        logger.error(
+                        logging.error(
                             f"Error analyzing plots for node {child_node.id}: {str(e)}"
                         )
 
@@ -1846,11 +1865,11 @@ class ParallelAgent:
                 )
 
             retry_count += 1
-            logger.warning(
+            logging.warning(
                 f"Failed to parse hyperparam tuning response (attempt {retry_count}/{retry_limit})"
             )
 
-        logger.error(
+        logging.error(
             f"Failed to parse hyperparam tuning response after {retry_limit} retries. Falling back to default idea of increasing learning rate."
         )
         return HyperparamTuningIdea(
@@ -1909,11 +1928,11 @@ class ParallelAgent:
                 )
 
             retry_count += 1
-            logger.warning(
+            logging.warning(
                 f"Failed to parse ablation response (attempt {retry_count}/{retry_limit})"
             )
 
-        logger.error(
+        logging.error(
             f"Failed to parse ablation response after {retry_limit} retries. Falling back to default idea of removing dropout."
         )
         return AblationIdea(name="add one more layer", description="add one more layer")
@@ -2064,7 +2083,7 @@ class ParallelAgent:
                     _safe_pickle_test(node_data, f"node {node.id} data")
                     node_data_list.append(node_data)
                 except Exception as e:
-                    logger.error(f"Error preparing node {node.id}: {str(e)}")
+                    logging.error(f"Error preparing node {node.id}: {str(e)}")
                     raise
             else:
                 node_data_list.append(None)  # None means new draft
@@ -2080,9 +2099,9 @@ class ParallelAgent:
                     # Get current process ID for GPU assignment
                     process_id = f"worker_{len(futures)}"
                     gpu_id = self.gpu_manager.acquire_gpu(process_id)
-                    logger.info(f"Assigned GPU {gpu_id} to process {process_id}")
+                    logging.info(f"Assigned GPU {gpu_id} to process {process_id}")
                 except RuntimeError as e:
-                    logger.warning(f"Could not acquire GPU: {e}. Running on CPU")
+                    logging.warning(f"Could not acquire GPU: {e}. Running on CPU")
 
             if (
                 self.stage_name
@@ -2162,10 +2181,10 @@ class ParallelAgent:
 
             except TimeoutError:
                 print("Worker process timed out, couldn't get the result")
-                logger.error(f"Worker process timed out, couldn't get the result")
+                logging.error(f"Worker process timed out, couldn't get the result")
             except Exception as e:
                 print(f"Error processing node: {str(e)}")
-                logger.error(f"Error processing node: {str(e)}")
+                logging.error(f"Error processing node: {str(e)}")
                 import traceback
 
                 traceback.print_exc()
@@ -2178,7 +2197,7 @@ class ParallelAgent:
                     and process_id in self.gpu_manager.gpu_assignments
                 ):
                     self.gpu_manager.release_gpu(process_id)
-                    logger.info(f"Released GPU for process {process_id}")
+                    logging.info(f"Released GPU for process {process_id}")
 
     def _update_hyperparam_tuning_state(self, result_node: Node):
         """Update hyperparam tuning tracking state based on execution results."""
@@ -2194,9 +2213,9 @@ class ParallelAgent:
 
         if not result_node.is_buggy:
             self._hyperparam_tuning_state["tried_hyperparams"].add(hyperparam_name)
-            logger.info(f"Hyperparam tuning {hyperparam_name} ran successfully")
+            logging.info(f"Hyperparam tuning {hyperparam_name} ran successfully")
         else:
-            logger.warning(f"Hyperparam tuning {hyperparam_name} failed")
+            logging.warning(f"Hyperparam tuning {hyperparam_name} failed")
 
     def _update_ablation_state(self, result_node: Node):
         """Update ablation tracking state based on execution results.
@@ -2214,7 +2233,7 @@ class ParallelAgent:
 
         if not result_node.is_buggy:
             self._ablation_state["completed_ablations"].add(ablation_name)
-            logger.info(f"Ablation {ablation_name} completed successfully")
+            logging.info(f"Ablation {ablation_name} completed successfully")
 
     def _aggregate_seed_eval_results(
         self, seed_nodes: List[Node], parent_node: Node

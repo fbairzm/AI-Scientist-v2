@@ -1,14 +1,15 @@
 import json
 import os
 import re
-from typing import Any
+from typing import Any, List, Dict
 from ai_scientist.utils.token_tracker import track_token_usage
 
 import anthropic
 import backoff
-import openai
+import openai 
+from ollama import chat
 
-MAX_NUM_TOKENS = 4096
+MAX_NUM_TOKENS = 16384
 
 AVAILABLE_LLMS = [
     "claude-3-5-sonnet-20240620",
@@ -51,8 +52,18 @@ AVAILABLE_LLMS = [
     "gemini-2.0-flash",
     "gemini-2.5-flash-preview-04-17",
     "gemini-2.5-pro-preview-03-25",
+    # Ollama local models (embedding models removed)
+    "ollama/gemma3:1b",
+    "ollama/gemma3:latest",
+    "ollama/deepcoder:latest",
+    "ollama/qwen3:latest",
+    "ollama/qwen3:32b",
+    "ollama/command-r7b:latest",
+    "ollama/devstral:latest",
+    "ollama/phi4-reasoning:plus",
+    "ollama/Deepseek-r1:latest",
+    "ollama/deepscaler:latest",
 ]
-
 
 # Get N responses from a single message, used for ensembling.
 @backoff.on_exception(
@@ -64,6 +75,18 @@ AVAILABLE_LLMS = [
         anthropic.RateLimitError,
     ),
 )
+
+def get_ollama_valid_names(model_name : str) : 
+    # Check if the model name is in the list of available models
+    if model_name.startswith("ollama/"):
+            model_name = model_name.split("/", 1)[1] 
+    # Check if the model name is in the list of available models
+    for mname in AVAILABLE_LLMS :   
+        if mname.startswith("ollama/") and model_name in mname :
+            return True  
+    return False    
+
+
 @track_token_usage
 def get_batch_responses_from_llm(
     prompt,
@@ -148,6 +171,28 @@ def get_batch_responses_from_llm(
         new_msg_history = [
             new_msg_history + [{"role": "assistant", "content": c}] for c in content
         ]
+    elif get_ollama_valid_names(model):
+        if model.startswith("ollama/"):
+            model_name = model.split("/", 1)[1]
+        else:
+            model_name = model
+        new_msg_history = msg_history + [{"role": "user", "content": msg}]
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system_message},
+                *new_msg_history,
+            ],
+            temperature=temperature,
+            max_tokens=MAX_NUM_TOKENS,
+            n=n_responses,
+            stop=None,
+            seed=0,
+        )
+        content = [r.message.content for r in response.choices]
+        new_msg_history = [
+            new_msg_history + [{"role": "assistant", "content": c}] for c in content
+        ]
     else:
         content, new_msg_history = [], []
         for _ in range(n_responses):
@@ -203,6 +248,19 @@ def make_llm_call(client, model, temperature, system_message, prompt):
             seed=0,
         )
     
+    elif get_ollama_valid_names(model):
+        return client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system_message},
+                *prompt,
+            ],
+            temperature=temperature,
+            max_tokens=MAX_NUM_TOKENS,
+            n=1,
+            stop=None,
+            seed=0,
+        )
     else:
         raise ValueError(f"Model {model} not supported.")
 
@@ -266,6 +324,22 @@ def get_response_from_llm(
         response = make_llm_call(
             client,
             model,
+            temperature,
+            system_message=system_message,
+            prompt=new_msg_history,
+        )
+        content = response.choices[0].message.content
+        new_msg_history = new_msg_history + [{"role": "assistant", "content": content}]
+    elif get_ollama_valid_names(model):
+        model_name = model
+        # For Ollama, model is just the model name (without "ollama/")
+        if model.startswith("ollama/"):
+            model_name = model.split("/", 1)[1] 
+            
+        new_msg_history = msg_history + [{"role": "user", "content": msg}]
+        response = make_llm_call(
+            client,
+            model_name,
             temperature,
             system_message=system_message,
             prompt=new_msg_history,
@@ -462,6 +536,10 @@ def create_client(model) -> tuple[Any, str]:
             ),
             "meta-llama/llama-3.1-405b-instruct",
         )
+    elif model.startswith("ollama/"):
+        print(f"Using Ollama local API with model {model}.")
+        model_name = model.split("/", 1)[1] 
+        return openai.OpenAI(base_url='http://localhost:11434/v1/', api_key='ollama'), model_name
     elif 'gemini' in model:
         print(f"Using OpenAI API with {model}.")
         return (
@@ -472,4 +550,4 @@ def create_client(model) -> tuple[Any, str]:
             model,
         )
     else:
-        raise ValueError(f"Model {model} not supported.")
+        raise ValueError(f"Model {model} not supported.") 

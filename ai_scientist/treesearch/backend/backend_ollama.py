@@ -7,7 +7,7 @@ from funcy import notnone, once, select_values
 import openai
 from rich import print
 
-_client: openai.OpenAI = None  # type: ignore
+_client: openai.OpenAI = None
 
 OPENAI_TIMEOUT_EXCEPTIONS = (
     openai.RateLimitError,
@@ -20,7 +20,11 @@ OPENAI_TIMEOUT_EXCEPTIONS = (
 @once
 def _setup_openai_client():
     global _client
-    _client = openai.OpenAI(max_retries=0)
+    _client = openai.OpenAI(
+        base_url='http://localhost:11434/v1/',
+        # required but ignored
+        api_key='ollama',
+    )
 
 
 def query(

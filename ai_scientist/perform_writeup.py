@@ -451,13 +451,16 @@ with "latex" syntax highlighting, like so:
 ```
 """
 
+general_model_for_this_task = "ollama/qwen3:latest"
+if "DEFAULT_OLLAMA_MODEL" in os.environ:
+    general_model_for_this_task = os.environ["DEFAULT_OLLAMA_MODEL"]
 
 def perform_writeup(
     base_folder,
     no_writing=False,
     num_cite_rounds=20,
-    small_model="gpt-4o-2024-05-13",
-    big_model="o1-2024-12-17",
+    small_model=general_model_for_this_task,
+    big_model="ollama/qwen3:32b",
     n_writeup_reflections=3,
     page_limit=8,
 ):

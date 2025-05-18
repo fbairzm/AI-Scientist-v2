@@ -742,8 +742,8 @@ def filter_experiment_summaries(exp_summaries, step_name):
     return filtered_summaries
 
 
-def gather_citations(base_folder, num_cite_rounds=20, small_model="gpt-4o-2024-05-13"):
-    """
+def gather_citations(base_folder, num_cite_rounds=20, small_model="ollama/qwen3:latest"):
+    """ 
     Gather citations for a paper, with ability to resume from previous progress.
 
     Args:
@@ -859,8 +859,8 @@ def perform_writeup(
     citations_text=None,
     no_writing=False,
     num_cite_rounds=20,
-    small_model="gpt-4o-2024-05-13",
-    big_model="o1-2024-12-17",
+    small_model="ollama/qwen3:latest",
+    big_model="ollama/qwen3:32b",
     n_writeup_reflections=3,
     page_limit=4,
 ):

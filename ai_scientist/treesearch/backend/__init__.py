@@ -1,4 +1,6 @@
+import re
 from . import backend_anthropic, backend_openai
+from . import backend_ollama
 from .utils import FunctionSpec, OutputType, PromptType, compile_prompt_to_md
 
 
@@ -52,7 +54,19 @@ def query(
     else:
         model_kwargs["max_tokens"] = max_tokens
 
-    query_func = backend_anthropic.query if "claude-" in model else backend_openai.query
+ 
+    # Determine the backend to use based on the model name
+    # Default use OpenAI or Anthropic, use the respective backend 
+    query_func = backend_openai.query 
+    if "claude-" in model :
+        # If the model is Claude, use the Anthropic backend
+        query_func = backend_anthropic.query
+    elif  model.startswith("ollama/") or  re.match(r"^(gemma3|devstral|qwen|deepcoder|phi4|command-r7b|deepscaler|deepseek)", model):
+        # If the model is Ollama, use the Ollama backend
+        query_func = backend_ollama.query
+        model_kwargs["model"] = model.split("/", 1)[1]  # Remove "ollama/" prefix
+
+    
     output, req_time, in_tok_count, out_tok_count, info = query_func(
         system_message=compile_prompt_to_md(system_message) if system_message else None,
         user_message=compile_prompt_to_md(user_message) if user_message else None,
