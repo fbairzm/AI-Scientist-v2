@@ -1,5 +1,6 @@
 import os.path as osp
 import json
+import logging
 import argparse
 import shutil
 import torch
@@ -51,7 +52,7 @@ def parse_arguments():
     parser.add_argument(
         "--load_ideas",
         type=str,
-        default="ideas/i_cant_believe_its_not_better.json",
+        default="ai_scientist/ideas/i_cant_believe_its_not_better.json",
         help="Path to a JSON file containing pregenerated ideas",
     )
     parser.add_argument(
@@ -85,19 +86,22 @@ def parse_arguments():
     parser.add_argument(
         "--model_agg_plots",
         type=str,
-        default="o3-mini-2025-01-31",
+        # default="o3-mini-2025-01-31",
+        default="ollama/qwen3:32b",
         help="Model to use for plot aggregation",
     )
     parser.add_argument(
         "--model_writeup",
         type=str,
-        default="o1-preview-2024-09-12",
+        # default="o1-preview-2024-09-12",            
+        default="ollama/qwen3:32b",
         help="Model to use for writeup",
     )
     parser.add_argument(
         "--model_citation",
         type=str,
-        default="gpt-4o-2024-11-20",
+        # default="gpt-4o-2024-11-20",
+        default="ollama/qwen3:32b",
         help="Model to use for citation gathering",
     )
     parser.add_argument(
@@ -109,7 +113,8 @@ def parse_arguments():
     parser.add_argument(
         "--model_review",
         type=str,
-        default="gpt-4o-2024-11-20",
+        # default="gpt-4o-2024-11-20",
+        default="ollama/qwen3:32b",        
         help="Model to use for review main text and captions",
     )
     parser.add_argument(
@@ -121,6 +126,12 @@ def parse_arguments():
         "--skip_review",
         action="store_true",
         help="If set, skip the review process",
+    )
+    parser.add_argument(
+        "--debug_mode",
+        type=int,
+        default=2,
+        help="Low level debug mode [ 0 = None, 1 = low, 2 = high].",
     )
     return parser.parse_args()
 
@@ -175,8 +186,22 @@ def redirect_stdout_stderr_to_file(log_file_path):
 
 if __name__ == "__main__":
     args = parse_arguments()
+    # Set up logging
+    log_format="%(asctime)s - %(levelname)s - %(message)s"
+    log_level=logging.WARNING
+    # Set up logging based on debug mode
+    if args.debug_mode == 2 :
+        log_level=logging.DEBUG
+    elif args.debug_mode == 1:
+        log_level=logging.INFO
+    
+    logging.basicConfig(
+        level=log_level,
+        format=log_format,
+    ) 
+
     os.environ["AI_SCIENTIST_ROOT"] = os.path.dirname(os.path.abspath(__file__))
-    print(f"Set AI_SCIENTIST_ROOT to {os.environ['AI_SCIENTIST_ROOT']}")
+    logging.warning(f"Set AI_SCIENTIST_ROOT to {os.environ['AI_SCIENTIST_ROOT']}")
 
     # Check available GPUs and adjust parallel processes if necessary
     available_gpus = get_available_gpus()
@@ -184,13 +209,13 @@ if __name__ == "__main__":
 
     with open(args.load_ideas, "r") as f:
         ideas = json.load(f)
-        print(f"Loaded {len(ideas)} pregenerated ideas from {args.load_ideas}")
+        logging.warning(f"Loaded {len(ideas)} pregenerated ideas from {args.load_ideas}")
 
     idea = ideas[args.idea_idx]
 
     date = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     idea_dir = f"experiments/{date}_{idea['Name']}_attempt_{args.attempt_id}"
-    print(f"Results will be saved in {idea_dir}")
+    logging.warning(f"Results will be saved in {idea_dir}")
     os.makedirs(idea_dir, exist_ok=True)
 
     # Convert idea json to markdown file
@@ -204,7 +229,7 @@ if __name__ == "__main__":
             with open(code_path, "r") as f:
                 code = f.read()
         else:
-            print(f"Warning: Code file {code_path} not found")
+            logging.warning(f"Warning: Code file {code_path} not found")
     else:
         code_path = None
 
@@ -217,7 +242,7 @@ if __name__ == "__main__":
             with open(dataset_ref_path, "r") as f:
                 dataset_ref_code = f.read()
         else:
-            print(f"Warning: Dataset reference file {dataset_ref_path} not found")
+            logging.warning(f"Warning: Dataset reference file {dataset_ref_path} not found")
             dataset_ref_code = None
 
     if dataset_ref_code is not None and code is not None:
@@ -289,7 +314,7 @@ if __name__ == "__main__":
                 break
 
         if not writeup_success:
-            print("Writeup process did not complete successfully after all retries.")
+            logging.info("Writeup process did not complete successfully after all retries.")
 
     save_token_tracker(idea_dir)
 
@@ -297,7 +322,7 @@ if __name__ == "__main__":
         # Perform paper review if the paper exists
         pdf_path = find_pdf_path_for_review(idea_dir)
         if os.path.exists(pdf_path):
-            print("Paper found at: ", pdf_path)
+            logging.warning("Paper found at: ", pdf_path)
             paper_content = load_paper(pdf_path)
             client, client_model = create_client(args.model_review)
             review_text = perform_review(paper_content, client_model, client)
@@ -308,9 +333,9 @@ if __name__ == "__main__":
                 f.write(json.dumps(review_text, indent=4))
             with open(osp.join(idea_dir, "review_img_cap_ref.json"), "w") as f:
                 json.dump(review_img_cap_ref, f, indent=4)
-            print("Paper review completed.")
+            logging.warning("Paper review completed.")
 
-    print("Start cleaning up processes")
+    logging.info("Start cleaning up processes")
     # Kill all mp and torch processes associated with this experiment
     import psutil
     import signal

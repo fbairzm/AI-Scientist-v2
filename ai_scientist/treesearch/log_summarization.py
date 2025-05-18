@@ -8,10 +8,12 @@ from .journal import Node, Journal
 
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 sys.path.insert(0, parent_dir)
-from ai_scientist.llm import get_response_from_llm, extract_json_between_markers
+from ai_scientist.llm import get_response_from_llm, extract_json_between_markers, create_client
 
-client = openai.OpenAI()
-model = "gpt-4o-2024-08-06"
+# client = openai.OpenAI()
+# model = "gpt-4o-2024-08-06"
+# Create the LLM client
+client, model = create_client("ollama/gemma3:1b")
 
 report_summarizer_sys_msg = """You are an expert machine learning researcher.
 You are given multiple experiment logs, each representing a node in a stage of exploring scientific ideas and implementations.

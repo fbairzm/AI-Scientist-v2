@@ -1,5 +1,6 @@
 import argparse
 import json
+import logging
 import os.path as osp
 import re
 import traceback
@@ -123,7 +124,21 @@ Results from your last action (if any):
 
 {last_tool_results}
 """
+def extract_first_json_object(text: str) -> Any:
+    """
+    Extracts the first valid JSON object from a given string.
+    """
+    import json
+    import re
 
+    json_pattern = r"\{(?:[^{}]|(?R))*\}"
+    match = re.search(json_pattern, text, re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group(0))
+        except json.JSONDecodeError:
+            return None
+    return None
 
 def generate_temp_free_idea(
     idea_fname: str,
@@ -133,6 +148,7 @@ def generate_temp_free_idea(
     max_num_generations: int = 20,
     num_reflections: int = 5,
     reload_ideas: bool = True,
+    debug_mode: int = 0
 ) -> List[Dict]:
     idea_str_archive = []
     # load ideas from file
@@ -176,6 +192,7 @@ def generate_temp_free_idea(
                     model=model,
                     system_message=system_prompt,
                     msg_history=msg_history,
+                    print_debug=(debug_mode > 0),
                 )
 
                 # Parse the LLM's response
@@ -211,10 +228,15 @@ def generate_temp_free_idea(
                         tool = tools_dict[action]
                         # Parse arguments
                         try:
+                            if debug_mode > 0 :
+                                print(f"Using tool: {tool.name}")
+                                print(f"arguments_text: {arguments_text}")
                             arguments_json = json.loads(arguments_text)
                         except json.JSONDecodeError:
-                            raise ValueError(f"Invalid arguments JSON for {action}.")
-
+                            arguments_json = extract_first_json_object(arguments_text)
+                            
+                            if arguments_json is None:
+                                raise ValueError(f"Invalid arguments JSON for {action}.")
                         # Use the tool
                         try:
                             # Assuming the arguments match the parameters of the tool
@@ -273,7 +295,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model",
         type=str,
-        default="gpt-4o-2024-05-13",
+        default="ollama/gemma3:1b",
         choices=AVAILABLE_LLMS,
         help="Model to use for AI Scientist.",
     )
@@ -286,24 +308,45 @@ if __name__ == "__main__":
     parser.add_argument(
         "--workshop-file",
         type=str,
-        default="ideas/i_cant_believe_its_not_better.md",
+        default="ai_scientist/ideas/geometric_solar_cell_efficiency.md",
         help="Path to the workshop description file.",
     )
     parser.add_argument(
         "--num-reflections",
         type=int,
-        default=5,
+        default=2,
         help="Number of reflection rounds per proposal.",
+    )
+    parser.add_argument(
+        "--debug_mode",
+        type=int,
+        default=1,
+        help="Low level debug mode [ 0 = None, 1 = low, 2 = high].",
     )
     args = parser.parse_args()
 
     # Create the LLM client
     client, client_model = create_client(args.model)
+    log_format="%(asctime)s - %(levelname)s - %(message)s"
+    log_level=logging.WARNING
+    # Set up logging based on debug mode
+    if args.debug_mode == 2 :
+        level=logging.DEBUG
+    elif args.debug_mode == 1:
+        evel=logging.INFO
+    
+    logging.basicConfig(
+        level=log_level,
+        format=log_format,
+    ) 
 
     with open(args.workshop_file, "r") as f:
         workshop_description = f.read()
-    print(f"Using workshop description from {args.workshop_file} for idea generation.")
-    print(f"Workshop description:\n{workshop_description}")
+
+    logging.info(f"Using workshop description from {args.workshop_file} for idea generation.")
+    logging.info(f"Workshop description:\n{workshop_description}")
+
+
 
     # Create output filename by replacing .md extension with .json
     idea_fname = args.workshop_file.replace(".md", ".json")
@@ -315,5 +358,6 @@ if __name__ == "__main__":
         workshop_description=workshop_description,
         max_num_generations=args.max_num_generations,
         num_reflections=args.num_reflections,
+        debug_mode=args.debug_mode,
     )
-    print(f"{args.workshop_file} generated {len(ideas)} ideas.")
+    logging.info(f"{args.workshop_file} generated {len(ideas)} ideas.")

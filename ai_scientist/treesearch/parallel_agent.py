@@ -709,13 +709,15 @@ class MinimalAgent:
             ),
         )
 
+        logging.debug(f"Prompt : {prompt}")
+        logging.debug(f"Response: {response}")
+        
         node.analysis = response["summary"]
         node.is_buggy = response["is_bug"] or node.exc_type is not None
-        print(
-            "[red]Checking if response contains metric name and description[/red]",
-            flush=True,
+        logging.info(
+            "[red]Checking if response contains metric name and description[/red]" 
         )
-        print(response)
+        logging.info(response)
 
     def _generate_plotting_code(
         self, node: Node, working_dir: str, plot_code_from_prev_stage: str = None
@@ -1118,9 +1120,8 @@ class GPUManager:
 
 
 def get_gpu_count() -> int:
-    """Get number of available NVIDIA GPUs without using torch"""
+     # Try NVIDIA first
     try:
-        # First try using nvidia-smi
         nvidia_smi = subprocess.run(
             ["nvidia-smi", "--query-gpu=gpu_name", "--format=csv,noheader"],
             capture_output=True,
@@ -1128,15 +1129,34 @@ def get_gpu_count() -> int:
             check=True,
         )
         gpus = nvidia_smi.stdout.strip().split("\n")
-        return len(gpus)
-    except (subprocess.SubprocessError, FileNotFoundError):
-        # If nvidia-smi fails, try environment variable
-        cuda_visible_devices = os.environ.get("CUDA_VISIBLE_DEVICES")
-        if cuda_visible_devices:
-            # Filter out empty strings and -1 values
-            devices = [d for d in cuda_visible_devices.split(",") if d and d != "-1"]
-            return len(devices)
-        return 0
+        if gpus and gpus[0]:
+            return len(gpus)
+    except Exception:
+        pass
+    # Try AMD ROCm
+    try:
+        rocm_smi = subprocess.run(
+            ["rocm-smi", "--showproductname"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        gpu_indices = set()
+        for line in rocm_smi.stdout.strip().split("\n"):
+            line = line.strip()
+            if line.startswith("GPU["):
+                idx = line.split("]")[0][4:]
+                gpu_indices.add(idx)
+        if gpu_indices:
+            return len(gpu_indices) 
+    except Exception:
+        pass
+    # Fallback to CUDA_VISIBLE_DEVICES
+    cuda_visible_devices = os.environ.get("CUDA_VISIBLE_DEVICES")
+    if cuda_visible_devices:
+        devices = [d for d in cuda_visible_devices.split(",") if d and d != "-1"]
+        return len(devices)
+    return 0
 
 
 class ParallelAgent:
