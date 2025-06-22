@@ -295,7 +295,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model",
         type=str,
-        default="ollama/gemma3:1b",
+        default="ollama/qwen3:latest",
         choices=AVAILABLE_LLMS,
         help="Model to use for AI Scientist.",
     )

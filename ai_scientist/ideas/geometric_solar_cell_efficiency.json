@@ -1,24 +1,5 @@
 [
-    {
-        "Name": "flexible_microfluidic_solar_cells",
-        "Title": "Dynamic Thermal Management of Flexible Plastic Solar Cells via Embedded Microfluidic Cooling Channels",
-        "Short Hypothesis": "Integrating active microfluidic cooling channels within low-cost, flexible plastic solar cells can dynamically dissipate excess heat, thereby reducing thermal degradation and enhancing overall energy conversion efficiency under high-irradiance conditions.",
-        "Related Work": "Previous studies have explored passive thermal management (e.g., using phase change materials) and structural modifications (such as curved geometries) to improve solar cell performance. However, the active integration of microfluidic cooling within flexible plastic substrates remains largely unexplored. Related work in flexible electronics has demonstrated the feasibility of embedding fluidic channels for various functions, yet their application to thermal regulation in photovoltaic devices is novel and under-investigated.",
-        "Abstract": "This research proposes an innovative approach to enhance the efficiency of low-cost, flexible plastic solar cells by integrating microfluidic cooling channels directly into the cell substrate. Thermal management is a critical challenge for photovoltaic systems as excessive heat can degrade performance and accelerate material aging. By embedding active cooling channels, this design aims to dynamically dissipate excess thermal energy under high irradiance conditions, thereby maintaining optimal operating temperatures and improving overall efficiency. The proposal combines advances in flexible electronics fabrication (e.g., 3D printing and injection molding) with microfluidic engineering to create a novel photovoltaic module architecture. Computational fluid dynamics simulations will be employed to optimize channel geometries for effective heat removal, while experimental prototypes will be fabricated and tested under controlled conditions. Key performance metrics such as temperature regulation, efficiency gains, and long-term durability will be evaluated. The successful demonstration of this technology could pave the way for more reliable and efficient solar energy harvesting in portable, lightweight applications.",
-        "Experiments": [
-            "Design and simulation: Use computational fluid dynamics (CFD) to optimize microfluidic channel geometries and predict heat dissipation efficiency.",
-            "Prototype fabrication: Employ advanced manufacturing techniques (e.g., 3D printing or injection molding) to embed microfluidic channels within flexible plastic substrates.",
-            "Thermal characterization: Compare temperature profiles and cooling performance of cells with embedded channels against standard flexible solar cell designs under varying irradiance levels.",
-            "Efficiency measurement: Evaluate energy conversion efficiency improvements via controlled laboratory testing, including real-time monitoring of electrical output and thermal imaging.",
-            "Durability testing: Assess long-term reliability through accelerated aging tests to determine the impact of active cooling on material degradation and performance stability."
-        ],
-        "Risk Factors and Limitations": [
-            "Potential for leakage or blockage in microfluidic channels that could compromise both thermal management and device integrity.",
-            "Increased fabrication complexity and potential cost implications due to the integration of fluidic networks into flexible substrates.",
-            "Reliability concerns over long-term operation, including maintenance challenges associated with active cooling systems.",
-            "Necessity for rigorous optimization of channel design to balance effective heat removal without compromising electrical performance."
-        ]
-    },
+
     {
         "Name": "cylindrical_plastic_solar_cells",
         "Title": "Enhancing Photovoltaic Efficiency via Cylindrical and Spherical Geometries in Low-Cost Plastic Solar Cells",
@@ -101,6 +82,25 @@
             " \"Issue\": \"Manufacturing complexity\"                \"Mitigation\": \"Adoption of advanced 3D printing technologies for precise layering\"            ",
             " \"Issue\": \"Scaling production without quality loss\"                \"Mitigation\": \"Collaboration with material science experts to maintain efficiency during manufacturing\"            "
         ]
+    },
+    {
+        "Name": "flexible_microfluidic_solar_cells",
+        "Title": "Dynamic Thermal Management of Flexible Plastic Solar Cells via Embedded Microfluidic Cooling Channels",
+        "Short Hypothesis": "Integrating active microfluidic cooling channels within low-cost, flexible plastic solar cells can dynamically dissipate excess heat, thereby reducing thermal degradation and enhancing overall energy conversion efficiency under high-irradiance conditions.",
+        "Related Work": "Previous studies have explored passive thermal management (e.g., using phase change materials) and structural modifications (such as curved geometries) to improve solar cell performance. However, the active integration of microfluidic cooling within flexible plastic substrates remains largely unexplored. Related work in flexible electronics has demonstrated the feasibility of embedding fluidic channels for various functions, yet their application to thermal regulation in photovoltaic devices is novel and under-investigated.",
+        "Abstract": "This research proposes an innovative approach to enhance the efficiency of low-cost, flexible plastic solar cells by integrating microfluidic cooling channels directly into the cell substrate. Thermal management is a critical challenge for photovoltaic systems as excessive heat can degrade performance and accelerate material aging. By embedding active cooling channels, this design aims to dynamically dissipate excess thermal energy under high irradiance conditions, thereby maintaining optimal operating temperatures and improving overall efficiency. The proposal combines advances in flexible electronics fabrication (e.g., 3D printing and injection molding) with microfluidic engineering to create a novel photovoltaic module architecture. Computational fluid dynamics simulations will be employed to optimize channel geometries for effective heat removal, while experimental prototypes will be fabricated and tested under controlled conditions. Key performance metrics such as temperature regulation, efficiency gains, and long-term durability will be evaluated. The successful demonstration of this technology could pave the way for more reliable and efficient solar energy harvesting in portable, lightweight applications.",
+        "Experiments": [
+            "Design and simulation: Use computational fluid dynamics (CFD) to optimize microfluidic channel geometries and predict heat dissipation efficiency.",
+            "Prototype fabrication: Employ advanced manufacturing techniques (e.g., 3D printing or injection molding) to embed microfluidic channels within flexible plastic substrates.",
+            "Thermal characterization: Compare temperature profiles and cooling performance of cells with embedded channels against standard flexible solar cell designs under varying irradiance levels.",
+            "Efficiency measurement: Evaluate energy conversion efficiency improvements via controlled laboratory testing, including real-time monitoring of electrical output and thermal imaging.",
+            "Durability testing: Assess long-term reliability through accelerated aging tests to determine the impact of active cooling on material degradation and performance stability."
+        ],
+        "Risk Factors and Limitations": [
+            "Potential for leakage or blockage in microfluidic channels that could compromise both thermal management and device integrity.",
+            "Increased fabrication complexity and potential cost implications due to the integration of fluidic networks into flexible substrates.",
+            "Reliability concerns over long-term operation, including maintenance challenges associated with active cooling systems.",
+            "Necessity for rigorous optimization of channel design to balance effective heat removal without compromising electrical performance."
+        ]
     }
-
 ]

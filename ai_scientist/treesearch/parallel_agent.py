@@ -1294,9 +1294,9 @@ class ParallelAgent:
                 try:
                     process_id = f"seed_{seed}_worker"
                     gpu_id = self.gpu_manager.acquire_gpu(process_id)
-                    logging.info(f"Assigned GPU {gpu_id} to seed {seed}")
+                    print(f"Assigned GPU {gpu_id} to seed {seed}")
                 except RuntimeError as e:
-                    logging.warning(
+                    print(
                         f"Could not acquire GPU for seed {seed}: {e}. Running on CPU"
                     )
 
@@ -1461,10 +1461,10 @@ class ParallelAgent:
 
         if gpu_id is not None:
             os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
-            logging.info(f"Process {process_id} assigned to GPU {gpu_id}")
+            print(f"Process {process_id} assigned to GPU {gpu_id}")
         else:
             os.environ["CUDA_VISIBLE_DEVICES"] = ""
-            logging.info(f"Process {process_id} running on CPU")
+            print(f"Process {process_id} running on CPU")
 
         # Create minimal agent for worker process with the global metric definition
         worker_agent = MinimalAgent(
@@ -2099,9 +2099,9 @@ class ParallelAgent:
                     # Get current process ID for GPU assignment
                     process_id = f"worker_{len(futures)}"
                     gpu_id = self.gpu_manager.acquire_gpu(process_id)
-                    logging.info(f"Assigned GPU {gpu_id} to process {process_id}")
+                    print(f"Assigned GPU {gpu_id} to process {process_id}")
                 except RuntimeError as e:
-                    logging.warning(f"Could not acquire GPU: {e}. Running on CPU")
+                    print(f"Could not acquire GPU: {e}. Running on CPU")
 
             if (
                 self.stage_name

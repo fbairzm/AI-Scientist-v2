@@ -16,6 +16,12 @@ from datasets import load_dataset
 from torchvision.models import resnet50
 from huggingface_hub import login
 
+def cosine_similarity(a, b, dim=-1):
+    a = torch.nn.functional.normalize(a, dim=dim)
+    b = torch.nn.functional.normalize(b, dim=dim)
+    return (a * b).sum(dim=dim)
+
+
 login(token=os.environ["HF_TOKEN"])
 
 ## DATASET REFERENCE

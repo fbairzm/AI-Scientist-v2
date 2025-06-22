@@ -55,7 +55,7 @@ def journal_to_rich_tree(journal: Journal):
     return tree
 
 
-def perform_experiments_bfts(config_path: str):
+def perform_experiments_bfts(config_path: str, model_log_summary : str):
     # turn config path string into a path object
     config_path = Path(config_path)
     cfg = load_cfg(config_path)
@@ -217,7 +217,7 @@ def perform_experiments_bfts(config_path: str):
             baseline_summary,
             research_summary,
             ablation_summary,
-        ) = overall_summarize(manager.journals.items())
+        ) = overall_summarize(manager.journals.items(), model_log_summary)
         draft_summary_path = cfg.log_dir / "draft_summary.json"
         baseline_summary_path = cfg.log_dir / "baseline_summary.json"
         research_summary_path = cfg.log_dir / "research_summary.json"
@@ -245,4 +245,4 @@ def perform_experiments_bfts(config_path: str):
 if __name__ == "__main__":
     cfg_path = "treesearch/utils/config.yaml"
     cfg = load_cfg(cfg_path)
-    perform_experiments_bfts(cfg_path)
+    perform_experiments_bfts(cfg_path, "ollama/qwen3:latest")

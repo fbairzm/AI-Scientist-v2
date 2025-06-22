@@ -87,21 +87,21 @@ def parse_arguments():
         "--model_agg_plots",
         type=str,
         # default="o3-mini-2025-01-31",
-        default="ollama/qwen3:32b",
+        default="ollama/qwen3:30b-a3b",
         help="Model to use for plot aggregation",
     )
     parser.add_argument(
         "--model_writeup",
         type=str,
         # default="o1-preview-2024-09-12",            
-        default="ollama/qwen3:32b",
+        default="ollama/qwen3:30b-a3b",
         help="Model to use for writeup",
     )
     parser.add_argument(
         "--model_citation",
         type=str,
         # default="gpt-4o-2024-11-20",
-        default="ollama/qwen3:32b",
+        default="ollama/qwen3:30b-a3b",
         help="Model to use for citation gathering",
     )
     parser.add_argument(
@@ -114,7 +114,7 @@ def parse_arguments():
         "--model_review",
         type=str,
         # default="gpt-4o-2024-11-20",
-        default="ollama/qwen3:32b",        
+        default="ollama/qwen3:30b-a3b",        
         help="Model to use for review main text and captions",
     )
     parser.add_argument(
@@ -132,6 +132,13 @@ def parse_arguments():
         type=int,
         default=2,
         help="Low level debug mode [ 0 = None, 1 = low, 2 = high].",
+    )
+    parser.add_argument(
+        "--model_log_summary",
+        type=str,
+        # default="gpt-4o-2024-11-20",
+        default="ollama/qwen3:30b-a3b",        
+        help="Model to use for log summarization",
     )
     return parser.parse_args()
 
@@ -272,7 +279,7 @@ if __name__ == "__main__":
         idea_path_json,
     )
 
-    perform_experiments_bfts(idea_config_path)
+    perform_experiments_bfts(idea_config_path, args.model_log_summary)
     experiment_results_dir = osp.join(idea_dir, "logs/0-run/experiment_results")
     if os.path.exists(experiment_results_dir):
         shutil.copytree(

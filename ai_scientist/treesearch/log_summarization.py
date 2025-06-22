@@ -13,7 +13,27 @@ from ai_scientist.llm import get_response_from_llm, extract_json_between_markers
 # client = openai.OpenAI()
 # model = "gpt-4o-2024-08-06"
 # Create the LLM client
-client, model = create_client("ollama/gemma3:1b")
+# make this class singleton and return client and model from create_client
+class LLMClient:
+    _instance = None
+    def __new__(cls, client_string="ollama/qwen3:latest"):
+        if cls._instance is None:
+            cls._instance = super(LLMClient, cls).__new__(cls)
+            cls._instance.client, cls._instance.model = create_client(client_string)
+        return cls._instance
+
+    def __call__(self, *args, **kwargs):
+        return self.client(*args, **kwargs)
+    
+    #get the client and model
+    @property
+    def client(self):
+        return self._instance.client    
+    @property
+    def model(self):
+        return self._instance.model
+    
+
 
 report_summarizer_sys_msg = """You are an expert machine learning researcher.
 You are given multiple experiment logs, each representing a node in a stage of exploring scientific ideas and implementations.
@@ -264,7 +284,7 @@ Ensure the JSON is valid and properly formatted, as it will be automatically par
 """
 
 
-def annotate_history(journal):
+def annotate_history(journal, client, model):
     for node in journal.nodes:
         if node.parent:
             max_retries = 3
@@ -296,8 +316,12 @@ def annotate_history(journal):
             node.overall_plan = node.plan
 
 
-def overall_summarize(journals):
+def overall_summarize(journals, model_cl_string="ollama/qwen3:latest"):
     from concurrent.futures import ThreadPoolExecutor
+
+    LLMClient_instance = LLMClient(model_cl_string)
+    client = LLMClient_instance.client
+    model = LLMClient_instance.model
 
     def process_stage(idx, stage_tuple):
         stage_name, journal = stage_tuple

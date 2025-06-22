@@ -57,18 +57,29 @@ def query(
     if func_spec is None:
         output = choice.message.content
     else:
+        if not hasattr(choice.message, "tool_calls") or not choice.message.tool_calls:
+            logging.error(f"""Ollama API response missing tool_calls:
+                          system_message : {system_message}
+                          user_message   : {user_message}
+                          func_spec      : {func_spec} 
+                          filtered_kwargs: {filtered_kwargs}
+                          model_kwargs   : {model_kwargs}
+                          completion     : {completion}
+                          choice         : {choice}    
+            """)
+             
+            return None  # Or handle according to your interface
+
+        tool_calls = choice.message.tool_calls
         assert (
-            choice.message.tool_calls
-        ), f"function_call is empty, it is not a function call: {choice.message}"
-        assert (
-            choice.message.tool_calls[0].function.name == func_spec.name
+            tool_calls[0].function.name == func_spec.name
         ), "Function name mismatch"
         try:
             print(f"[cyan]Raw func call response: {choice}[/cyan]")
-            output = json.loads(choice.message.tool_calls[0].function.arguments)
+            output = json.loads(tool_calls[0].function.arguments)
         except json.JSONDecodeError as e:
             logging.error(
-                f"Error decoding the function arguments: {choice.message.tool_calls[0].function.arguments}"
+                f"Error decoding the function arguments: {tool_calls[0].function.arguments}"
             )
             raise e
 
