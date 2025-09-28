@@ -10,28 +10,45 @@ parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..",
 sys.path.insert(0, parent_dir)
 from ai_scientist.llm import get_response_from_llm, extract_json_between_markers, create_client
 
+def get_default_ollama_model():
+    if "DEFAULT_OLLAMA_MODEL" in os.environ:
+        return os.environ["DEFAULT_OLLAMA_MODEL"]
+    return "ollama/qwen3:latest"
+
 # client = openai.OpenAI()
 # model = "gpt-4o-2024-08-06"
 # Create the LLM client
 # make this class singleton and return client and model from create_client
 class LLMClient:
     _instance = None
-    def __new__(cls, client_string="ollama/qwen3:latest"):
+    def __new__(cls, client_string=get_default_ollama_model()):
         if cls._instance is None:
             cls._instance = super(LLMClient, cls).__new__(cls)
-            cls._instance.client, cls._instance.model = create_client(client_string)
+            cls._instance._client, cls._instance._model = create_client(client_string)
         return cls._instance
 
     def __call__(self, *args, **kwargs):
-        return self.client(*args, **kwargs)
+        # Forward calls to the underlying client object (if callable).
+        # Avoid referencing self.client which would recurse into this property.
+        client_obj = getattr(self._instance, "_client", None)
+        if client_obj is None:
+            raise TypeError("LLM client not initialized")
+        if callable(client_obj):
+            return client_obj(*args, **kwargs)
+        # Some client objects expose a callable interface via __call__.
+        if hasattr(client_obj, "__call__"):
+            return client_obj(*args, **kwargs)
+        raise TypeError("Underlying LLM client is not callable")
     
     #get the client and model
     @property
     def client(self):
-        return self._instance.client    
+        # Return the underlying client instance (not the wrapper property) to avoid recursion.
+        return getattr(self._instance, "_client", None)
     @property
     def model(self):
-        return self._instance.model
+        # Return the underlying model identifier/string.
+        return getattr(self._instance, "_model", None)
     
 
 
@@ -316,7 +333,7 @@ def annotate_history(journal, client, model):
             node.overall_plan = node.plan
 
 
-def overall_summarize(journals, model_cl_string="ollama/qwen3:latest"):
+def overall_summarize(journals, model_cl_string=get_default_ollama_model()):
     from concurrent.futures import ThreadPoolExecutor
 
     LLMClient_instance = LLMClient(model_cl_string)
@@ -325,7 +342,7 @@ def overall_summarize(journals, model_cl_string="ollama/qwen3:latest"):
 
     def process_stage(idx, stage_tuple):
         stage_name, journal = stage_tuple
-        annotate_history(journal)
+        annotate_history(journal, client, model)
         if idx in [1, 2]:
             best_node = journal.get_best_node()
             # get multi-seed results and aggregater node
@@ -375,7 +392,22 @@ def overall_summarize(journals, model_cl_string="ollama/qwen3:latest"):
                 total=len(list(journals)),
             )
         )
-        draft_summary, baseline_summary, research_summary, ablation_summary = results
+        # Support cases with fewer than 4 stages: pad missing summaries with None
+        if len(results) >= 4:
+            draft_summary, baseline_summary, research_summary, ablation_summary = (
+                results[0],
+                results[1],
+                results[2],
+                results[3],
+            )
+        else:
+            padded = results + [None] * (4 - len(results))
+            draft_summary, baseline_summary, research_summary, ablation_summary = (
+                padded[0],
+                padded[1],
+                padded[2],
+                padded[3],
+            )
 
     return draft_summary, baseline_summary, research_summary, ablation_summary
 

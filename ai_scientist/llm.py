@@ -50,8 +50,10 @@ AVAILABLE_LLMS = [
     "vertex_ai/claude-3-haiku@20240307",
     # Google Gemini models
     "gemini-2.0-flash",
-    "gemini-2.5-flash-preview-04-17",
-    "gemini-2.5-pro-preview-03-25",
+    "gemini-2.5-flash-preview",
+    "gemini-2.5-pro",
+    "gemini-2.5-flash-lite",
+    "gemini-2.0-flash-lite",
     # Ollama local models (embedding models removed)
     "ollama/gemma3:1b",
     "ollama/gemma3:latest",

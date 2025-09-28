@@ -1,6 +1,7 @@
 import json
 import logging
 import time
+import os
 
 from .utils import FunctionSpec, OutputType, opt_messages_to_list, backoff_create
 from funcy import notnone, once, select_values
@@ -19,8 +20,15 @@ OPENAI_TIMEOUT_EXCEPTIONS = (
 
 @once
 def _setup_openai_client():
+    """Create the standard OpenAI client. If OPENAI_API_KEY is not set the
+    underlying openai.OpenAI will raise a helpful error (keeps previous behavior).
+    """
     global _client
-    _client = openai.OpenAI(max_retries=0)
+    if "OPENAI_API_KEY" in os.environ:
+        _client = openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"], max_retries=0)
+    else:
+        # keep old behavior (constructor will raise if no key provided)
+        _client = openai.OpenAI(max_retries=0)
 
 
 def query(

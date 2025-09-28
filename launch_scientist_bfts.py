@@ -87,21 +87,21 @@ def parse_arguments():
         "--model_agg_plots",
         type=str,
         # default="o3-mini-2025-01-31",
-        default="ollama/qwen3:30b-a3b",
+        default="ollama/qwen3:14b-q4_K_M",
         help="Model to use for plot aggregation",
     )
     parser.add_argument(
         "--model_writeup",
         type=str,
         # default="o1-preview-2024-09-12",            
-        default="ollama/qwen3:30b-a3b",
+        default="ollama/qwen3:14b-q4_K_M",
         help="Model to use for writeup",
     )
     parser.add_argument(
         "--model_citation",
         type=str,
         # default="gpt-4o-2024-11-20",
-        default="ollama/qwen3:30b-a3b",
+        default="ollama/qwen3:14b-q4_K_M",
         help="Model to use for citation gathering",
     )
     parser.add_argument(
@@ -114,7 +114,7 @@ def parse_arguments():
         "--model_review",
         type=str,
         # default="gpt-4o-2024-11-20",
-        default="ollama/qwen3:30b-a3b",        
+        default="ollama/qwen3:14b-q4_K_M",        
         help="Model to use for review main text and captions",
     )
     parser.add_argument(
@@ -137,7 +137,7 @@ def parse_arguments():
         "--model_log_summary",
         type=str,
         # default="gpt-4o-2024-11-20",
-        default="ollama/qwen3:30b-a3b",        
+        default="ollama/qwen3:14b-q4_K_M",        
         help="Model to use for log summarization",
     )
     return parser.parse_args()

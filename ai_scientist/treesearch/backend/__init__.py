@@ -1,5 +1,5 @@
 import re
-from . import backend_anthropic, backend_openai
+from . import backend_anthropic, backend_openai, backend_googleapi
 from . import backend_ollama
 from .utils import FunctionSpec, OutputType, PromptType, compile_prompt_to_md
 
@@ -57,10 +57,13 @@ def query(
  
     # Determine the backend to use based on the model name
     # Default use OpenAI or Anthropic, use the respective backend 
-    query_func = backend_openai.query 
+    query_func = backend_openai.query
     if "claude-" in model :
         # If the model is Claude, use the Anthropic backend
         query_func = backend_anthropic.query
+    # If the model string contains 'gemini', route to Google API backend
+    elif "gemini" in model:
+        query_func = backend_googleapi.query
     elif  model.startswith("ollama/") or  re.match(r"^(gemma3|devstral|qwen|deepcoder|phi4|command-r7b|deepscaler|deepseek)", model):
         # If the model is Ollama, use the Ollama backend
         query_func = backend_ollama.query

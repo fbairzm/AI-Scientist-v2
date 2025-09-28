@@ -15,6 +15,8 @@ import time
 import traceback
 from dataclasses import dataclass
 from multiprocessing import Process, Queue
+import multiprocessing as mp
+mp.set_start_method('spawn', force=True)
 from pathlib import Path
 
 import humanize
@@ -165,8 +167,13 @@ class Interpreter:
         # - code_inq: send code to child to execute
         # - result_outq: receive stdout/stderr from child
         # - event_outq: receive events from child (e.g. state:ready, state:finished)
+ 
         # trunk-ignore(mypy/var-annotated)
-        self.code_inq, self.result_outq, self.event_outq = Queue(), Queue(), Queue()
+        self.code_inq, self.result_outq, self.event_outq = (
+            Queue(),
+            Queue(),
+            Queue(),
+        )
         self.process = Process(
             target=self._run_session,
             args=(self.code_inq, self.result_outq, self.event_outq),

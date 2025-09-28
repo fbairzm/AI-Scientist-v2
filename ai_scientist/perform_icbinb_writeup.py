@@ -29,7 +29,11 @@ from ai_scientist.perform_vlm_review import (
 )
 from ai_scientist.vlm import create_client as create_vlm_client
 
-
+def get_default_ollama_model():
+    if "DEFAULT_OLLAMA_MODEL" in os.environ:
+        return os.environ["DEFAULT_OLLAMA_MODEL"]
+    return "ollama/qwen3:latest"
+ 
 def remove_accents_and_clean(s):
     # Normalize to separate accents
     nfkd_form = unicodedata.normalize("NFKD", s)
@@ -859,7 +863,7 @@ def perform_writeup(
     citations_text=None,
     no_writing=False,
     num_cite_rounds=20,
-    small_model="ollama/qwen3:latest",
+    small_model=get_default_ollama_model(),
     big_model="ollama/qwen3:32b",
     n_writeup_reflections=3,
     page_limit=4,
