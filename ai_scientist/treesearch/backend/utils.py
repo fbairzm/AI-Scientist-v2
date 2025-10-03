@@ -25,8 +25,10 @@ def backoff_create(
 ):
     try:
         return create_fn(*args, **kwargs)
-    except retry_exceptions as e:
-        logger.info(f"Backoff exception: {e}")
+    except tuple(retry_exceptions) as e:
+        logger.info(f"Backoff exception: {str(e)}")
+        print(f"Backoff exception: {str(e)}")
+        print(f"Retrying... {type(e)}: {str(e)}") 
         return False
 
 

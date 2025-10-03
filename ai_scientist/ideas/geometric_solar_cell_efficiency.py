@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import r2_score
 import matplotlib.pyplot as plt
 
 # --- Setup ---
@@ -19,7 +20,7 @@ print(f"Using device: {device}")
 # Data saving structure
 experiment_data = {
     "synthetic_solar_cell": {
-        "metrics": {"train_mae": [], "val_mae": []},
+        "metrics": {"train_mae": [], "val_mae": [], "train_r2": [], "val_r2": []},
         "losses": {"train": [], "val": []},
         "predictions": [],
         "ground_truth": [],
@@ -111,8 +112,8 @@ class SolarCellMLP(nn.Module):
 # --- 4. Training and Evaluation ---
 input_features = X_train.shape[1]
 model = SolarCellMLP(input_features).to(device)
-criterion = nn.MSELoss()  # Using MSE for training loss
-mae_loss_fn = nn.L1Loss()  # MAE for the specified metric
+criterion = nn.MSELoss()
+mae_loss_fn = nn.L1Loss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 num_epochs = 50
@@ -122,6 +123,8 @@ for epoch in range(num_epochs):
     model.train()
     train_loss_sum = 0
     train_mae_sum = 0
+    all_train_preds = []
+    all_train_targets = []
     for features, targets in train_loader:
         features, targets = features.to(device), targets.to(device)
 
@@ -133,16 +136,21 @@ for epoch in range(num_epochs):
 
         train_loss_sum += loss.item() * features.size(0)
         train_mae_sum += mae_loss_fn(outputs, targets).item() * features.size(0)
+        all_train_preds.append(outputs.detach().cpu().numpy())
+        all_train_targets.append(targets.cpu().numpy())
 
     avg_train_loss = train_loss_sum / len(train_loader.dataset)
     avg_train_mae = train_mae_sum / len(train_loader.dataset)
+    train_r2 = r2_score(
+        np.concatenate(all_train_targets), np.concatenate(all_train_preds)
+    )
 
     # Validation loop
     model.eval()
     val_loss_sum = 0
     val_mae_sum = 0
-    all_preds = []
-    all_targets = []
+    all_val_preds = []
+    all_val_targets = []
     with torch.no_grad():
         for features, targets in val_loader:
             features, targets = features.to(device), targets.to(device)
@@ -150,15 +158,17 @@ for epoch in range(num_epochs):
 
             val_loss_sum += criterion(outputs, targets).item() * features.size(0)
             val_mae_sum += mae_loss_fn(outputs, targets).item() * features.size(0)
-
-            all_preds.append(outputs.cpu().numpy())
-            all_targets.append(targets.cpu().numpy())
+            all_val_preds.append(outputs.cpu().numpy())
+            all_val_targets.append(targets.cpu().numpy())
 
     avg_val_loss = val_loss_sum / len(val_loader.dataset)
     avg_val_mae = val_mae_sum / len(val_loader.dataset)
+    final_val_preds = np.concatenate(all_val_preds)
+    final_val_targets = np.concatenate(all_val_targets)
+    val_r2 = r2_score(final_val_targets, final_val_preds)
 
     print(
-        f"Epoch {epoch+1}/{num_epochs}: validation_loss = {avg_val_loss:.4f}, val_mae = {avg_val_mae:.4f}"
+        f"Epoch {epoch+1}/{num_epochs}: validation_loss = {avg_val_loss:.4f}, val_mae = {avg_val_mae:.4f}, val_r2 = {val_r2:.4f}"
     )
 
     # Store data
@@ -168,29 +178,28 @@ for epoch in range(num_epochs):
         avg_train_mae
     )
     experiment_data["synthetic_solar_cell"]["metrics"]["val_mae"].append(avg_val_mae)
+    experiment_data["synthetic_solar_cell"]["metrics"]["train_r2"].append(train_r2)
+    experiment_data["synthetic_solar_cell"]["metrics"]["val_r2"].append(val_r2)
     experiment_data["synthetic_solar_cell"]["epochs"].append(epoch + 1)
 
-
 # Store final predictions and ground truth for validation set
-final_predictions = np.concatenate(all_preds)
-final_ground_truth = np.concatenate(all_targets)
-experiment_data["synthetic_solar_cell"]["predictions"] = final_predictions
-experiment_data["synthetic_solar_cell"]["ground_truth"] = final_ground_truth
+experiment_data["synthetic_solar_cell"]["predictions"] = final_val_preds
+experiment_data["synthetic_solar_cell"]["ground_truth"] = final_val_targets
 
 
 # --- 5. Final Evaluation and Visualization ---
-final_val_mae = experiment_data["synthetic_solar_cell"]["metrics"]["val_mae"][-1]
+final_val_r2 = experiment_data["synthetic_solar_cell"]["metrics"]["val_r2"][-1]
 print("\n--- Final Evaluation ---")
 print(
-    f"Final Mean Absolute Error on Power Conversion Efficiency (Validation): {final_val_mae:.4f}"
+    f"Final R-squared Score on Power Conversion Efficiency (Validation): {final_val_r2:.4f}"
 )
 
 # Plotting Predicted vs True values
 plt.figure(figsize=(8, 8))
-plt.scatter(final_ground_truth, final_predictions, alpha=0.5)
+plt.scatter(final_val_targets, final_val_preds, alpha=0.5)
 plt.plot(
-    [min(y_val), max(y_val)],
-    [min(y_val), max(y_val)],
+    [min(y_val.min(), final_val_preds.min()), max(y_val.max(), final_val_preds.max())],
+    [min(y_val.min(), final_val_preds.min()), max(y_val.max(), final_val_preds.max())],
     "--",
     color="red",
     label="Ideal Fit",
@@ -207,33 +216,42 @@ plt.savefig(plot_path)
 print(f"Saved prediction plot to {plot_path}")
 
 # Plotting training history
-plt.figure(figsize=(10, 5))
-plt.plot(
+fig, ax1 = plt.subplots(figsize=(12, 6))
+ax1.set_xlabel("Epoch")
+ax1.set_ylabel("Loss (MSE)", color="tab:blue")
+ax1.plot(
     experiment_data["synthetic_solar_cell"]["epochs"],
     experiment_data["synthetic_solar_cell"]["losses"]["train"],
     label="Train Loss (MSE)",
+    color="tab:blue",
 )
-plt.plot(
+ax1.plot(
     experiment_data["synthetic_solar_cell"]["epochs"],
     experiment_data["synthetic_solar_cell"]["losses"]["val"],
     label="Validation Loss (MSE)",
-)
-plt.plot(
-    experiment_data["synthetic_solar_cell"]["epochs"],
-    experiment_data["synthetic_solar_cell"]["metrics"]["val_mae"],
-    label="Validation MAE",
+    color="tab:cyan",
     linestyle="--",
 )
+ax1.tick_params(axis="y", labelcolor="tab:blue")
+ax1.legend(loc="upper left")
+
+ax2 = ax1.twinx()
+ax2.set_ylabel("R-squared Score", color="tab:red")
+ax2.plot(
+    experiment_data["synthetic_solar_cell"]["epochs"],
+    experiment_data["synthetic_solar_cell"]["metrics"]["val_r2"],
+    label="Validation R-squared Score",
+    color="tab:red",
+)
+ax2.tick_params(axis="y", labelcolor="tab:red")
+ax2.set_ylim(0, 1)
+ax2.legend(loc="upper right")
+
 plt.title("Model Training History")
-plt.xlabel("Epoch")
-plt.ylabel("Loss / Metric Value")
-plt.legend()
-plt.grid(True)
-plt.tight_layout()
+fig.tight_layout()
 history_plot_path = os.path.join(working_dir, "training_history.png")
 plt.savefig(history_plot_path)
 print(f"Saved training history plot to {history_plot_path}")
-
 
 # --- 6. Save Data ---
 np.save(os.path.join(working_dir, "experiment_data.npy"), experiment_data)

@@ -694,8 +694,12 @@ class MinimalAgent:
             ),
             "Research idea": self.task_desc,
             "Implementation": wrap_code(node.code),
-            "Execution output": wrap_code(node.term_out, lang=""),
+            "Execution output": wrap_code(node._term_out, lang=""),
         }
+
+        #print(f"Vispi node: {node}") 
+        #print(f"Vispi exec_result: {exec_result}") 
+        #print(f"Vispi Prompt : {prompt}")
 
         response = cast(
             dict,
@@ -710,6 +714,8 @@ class MinimalAgent:
 
         logging.debug(f"Prompt : {prompt}")
         logging.debug(f"Response: {response}") 
+        
+        #print(f"Vispi Response: {response}") 
 
         node.analysis = response["summary"]
         node.is_buggy = response["is_bug"] or node.exc_type is not None
@@ -2159,7 +2165,21 @@ class ParallelAgent:
         for i, future in enumerate(futures):
             try:
                 print("About to get result from future")
+                # Retrieve the result.  ``future.result`` may return ``None`` or
+                # an unexpected type if the worker raised an exception or
+                # returned nothing.
                 result_data = future.result(timeout=self.timeout)
+
+                if result_data is None:
+                    raise TypeError(
+                        "Parallel worker returned None; expected a dict with a 'metric' key."
+                    )
+
+                if not isinstance(result_data, dict):
+                    raise TypeError(
+                        f"Parallel worker returned {type(result_data).__name__}; expected a dict."
+                    )
+
                 if "metric" in result_data:
                     print(f"metric type: {type(result_data['metric'])}")
                     print(f"metric contents: {result_data['metric']}")

@@ -234,3 +234,6 @@ mini-imagenet_training_log_20250614_152235.npy
 ai_scientist/ideas/geometric_solar_cell_efficiency.json
 _before_google_bfts_config.yaml
 ai_scientist/ideas/geometric_solar_cell_efficiency_old_donot_use.py
+ai_scientist/treesearch/backend/backend_googleapi.pp.old
+history_of_commands*.txt
+setup.env
